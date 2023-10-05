@@ -120,7 +120,11 @@
         <el-table-column prop="cardTypeName" label="卡种名称" />
         <el-table-column prop="userName" label="持卡人姓名" />
         <el-table-column prop="userPhone" label="持卡人手机号" />
-        <el-table-column prop="remainingCount" label="剩余次数" />
+        <el-table-column prop="remainingCount" label="剩余次数">
+          <template slot-scope="scope">
+            <span :class="{'red-text': scope.row.remainingCount <= 3}">{{ scope.row.remainingCount }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="createTime" label="开卡时间" />
         <el-table-column prop="updateTime" label="消费时间" />
         <el-table-column
@@ -181,6 +185,7 @@ export default {
       rules: {},
       showAddUserDialog: false, // 控制新增用户弹窗的显示与隐藏
       newUserForm: {}, // 新增用户的表单数据
+      // 新增用户的表单验证规则
       newUserRules: {
         name: [
           { required: true, message: '家长姓名不能为空', trigger: 'blur' }
@@ -188,7 +193,7 @@ export default {
         phone: [
           { required: true, message: '家长手机号（唯一标识）不能为空', trigger: 'blur' }
         ]
-      }, // 新增用户的表单验证规则
+      },
       addingUser: false // 正在执行新增用户的操作
     }
   },
@@ -222,6 +227,10 @@ export default {
         this.userInfos = res.content
       })
     }, consume(row) {
+      if (row.remainingCount === 0) {
+        this.$message.warning('次数为0，请及时充值')
+        return
+      }
       // Show confirmation dialog
       this.$confirm('确认要消费吗？', '提示', {
         confirmButtonText: '确定',
@@ -232,16 +241,14 @@ export default {
         if (row.remainingCount > 0) {
           row.remainingCount--
           // Set the form data
-          this.form = {
-            id: row.id,
-            cardTypeId: row.cardTypeId,
-            userId: row.userId,
-            remainingCount: row.remainingCount
-          }
+          this.form.id = row.id
+          this.form.cardTypeId = row.cardTypeId
+          this.form.userId = row.userId
+          this.form.remainingCount = row.remainingCount
           // Submit the form
           crudBpCardInfo.edit(this.form).then(() => {
-            // Refresh the table
-            this.crud.refresh()
+            this.crud.notify('消费成功', CRUD.NOTIFICATION_TYPE.SUCCESS)
+            this.crud.resetForm(this.form)
           })
         }
       }).catch(() => {
@@ -273,5 +280,7 @@ export default {
 </script>
 
 <style scoped>
-
+.red-text {
+  color: red;
+}
 </style>
